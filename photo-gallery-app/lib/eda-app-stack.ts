@@ -54,6 +54,10 @@ export class EDAAppStack extends cdk.Stack {
     logImageFn.addEnvironment("TABLE_NAME", imageTable.tableName);
     imageTable.grantWriteData(logImageFn);
 
+    imagesBucket.grantRead(logImageFn);
+    imageTable.grantWriteData(logImageFn);
+
+
     const addMetadataFn = new lambdanode.NodejsFunction(this, "AddMetadataFn", {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: `${__dirname}/../lambdas/addMetadata.ts`,
@@ -82,6 +86,10 @@ export class EDAAppStack extends cdk.Stack {
     });
     removeImageFn.addEnvironment("TABLE_NAME", imageTable.tableName);
     imageTable.grantWriteData(removeImageFn);
+
+    imagesBucket.grantDelete(removeImageFn);
+
+
 
     const confirmationMailerFn = new lambdanode.NodejsFunction(this, "ConfirmationMailerFn", {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -127,6 +135,12 @@ export class EDAAppStack extends cdk.Stack {
       batchSize: 5,
       maxBatchingWindow: cdk.Duration.seconds(5),
     }));
+
+    removeImageFn.addEventSource(new events.SqsEventSource(imageProcessQueue, {
+      batchSize: 5,
+      maxBatchingWindow: cdk.Duration.seconds(5),
+    }));
+
 
     imagesBucket.grantRead(logImageFn);
 
