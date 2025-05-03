@@ -1,39 +1,40 @@
-import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { SNSHandler, SNSMessage } from "aws-lambda"; 
+import {
+  DynamoDBClient,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
 
-export const handler = async (event: any) => {
-  const dynamodb = new DynamoDBClient({});
-  const tableName = process.env.TABLE_NAME;
+const dynamo = new DynamoDBClient({});
+
+export const handler: SNSHandler = async (event) => {
+  console.log("SNS Event:", JSON.stringify(event));
 
   for (const record of event.Records) {
-    const message = JSON.parse(record.Sns.Message);
-    const metadataType = record.Sns.MessageAttributes.metadata_type.StringValue;
-    const imageId = message.id;
-    const value = message.value;
+    const snsMsg = record.Sns;
 
-    if (!['Caption', 'Date', 'Name'].includes(metadataType)) {
-      console.log(`Invalid metadata type: ${metadataType}`);
-      continue;
-    }
+    const { id, value } = JSON.parse(snsMsg.Message);
 
-    const updateParams = {
-      TableName: tableName,
+    const metadataType = snsMsg.MessageAttributes?.metadata_type?.Value;
+
+    const updateCommand = new UpdateItemCommand({
+      TableName: process.env.TABLE_NAME!,
       Key: {
-        id: { S: imageId },
+        id: { S: id },
       },
-      UpdateExpression: `SET #field = :value`,
+      UpdateExpression: `SET #meta = :val`,
       ExpressionAttributeNames: {
-        '#field': metadataType,
+        "#meta": metadataType, 
       },
       ExpressionAttributeValues: {
-        ':value': { S: value },
+        ":val": { S: value },
       },
-    };
+    });
 
-    await dynamodb.send(new UpdateItemCommand(updateParams));
+    try {
+      await dynamo.send(updateCommand);
+      console.log(`Updated image [${id}] - ${metadataType}: ${value}`);
+    } catch (err) {
+      console.error("DynamoDB update failed", err);
+    }
   }
-
-  return {
-    statusCode: 200,
-    body: 'Metadata processed.'
-  };
 };
