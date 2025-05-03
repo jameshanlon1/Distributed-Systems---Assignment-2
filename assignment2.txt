@@ -1,1 +1,19 @@
 GitHub Repo: https://github.com/jameshanlon1/ds-eda-lab
+
+
+
+
+ aws s3 cp ./images/test.txt s3://assignment-2-images9bf4dcd5-n6gvqjk483nl/
+
+ photo-gallery-app> aws sns publish `
+  --topic-arn "arn:aws:sns:eu-west-1:864090808291:Assignment-2-ImageTopicBD97921B-Oa0RavvDduNj" `
+  --message file://moderator.json `
+  --message-attributes '{\"eventType\":{\"DataType\":\"String\",\"StringValue\":\"ModeratorUpdate\"}}'
+
+
+
+aws sns publish `
+   --topic-arn "arn:aws:sns:eu-west-1:864090808291:Assignment-2-ImageTopicBD97921B-Oa0RavvDduNj" `
+   --message file://./message.json `
+   --message-attributes file://./attributes.json
+ 
