@@ -2,7 +2,7 @@
 
 __Name:__ James Hanlon
 
-__Demo__: [Add your YouTube demo URL here]
+__Demo__: https://youtu.be/VZG5s-YQyNg
 
 This repository contains the implementation of a skeleton design for an application that manages a photo gallery, illustrated below. The app uses an event-driven architecture and is deployed on the AWS platform using the CDK framework for infrastructure provisioning.
 
@@ -39,4 +39,3 @@ SNS filter policies are correctly applied to:
 - AWS CDK is used to provision all infrastructure as code
 - The system leverages S3, SNS, SQS, Lambda, DynamoDB, and SES
 - SNS filtering ensures that each subscriber receives only the appropriate events
-- Remaining tasks include debugging invalid file detection and confirming SES mailer delivery
