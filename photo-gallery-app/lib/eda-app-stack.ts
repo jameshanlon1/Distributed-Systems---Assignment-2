@@ -58,7 +58,7 @@ export class EDAAppStack extends cdk.Stack {
     "LogImageFn",
     {
       runtime: lambda.Runtime.NODEJS_22_X,
-      entry: `${__dirname}/../lambdas/logImage.ts`,
+      entry: `${__dirname}/../lambdas/logImages.ts`,
       timeout: cdk.Duration.seconds(15),
       memorySize: 128,
     }

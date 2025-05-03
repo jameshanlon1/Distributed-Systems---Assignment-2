@@ -1,7 +1,10 @@
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+
+
 export const handler = async (event: any) => {
-    const AWS = require('aws-sdk');
-    const dynamodb = new AWS.DynamoDB.DocumentClient();
+    const dynamodb = new DynamoDBClient({});
     const tableName = process.env.TABLE_NAME;
+    
   
     for (const record of event.Records) {
       const message = JSON.parse(record.Sns.Message);
@@ -28,7 +31,7 @@ export const handler = async (event: any) => {
         },
       };
   
-      await dynamodb.update(updateParams).promise();
+      await dynamodb.send(new UpdateItemCommand(updateParams));
     }
   
     return {

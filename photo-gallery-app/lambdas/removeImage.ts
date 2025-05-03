@@ -1,6 +1,11 @@
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({});
+
+
 export const handler = async (event: any) => {
-    const AWS = require('aws-sdk');
-    const s3 = new AWS.S3();
+    const dynamodb = new DynamoDBClient({});
     const bucketName = process.env.BUCKET_NAME;
   
     for (const record of event.Records) {
@@ -9,7 +14,7 @@ export const handler = async (event: any) => {
       const key = s3Info?.object?.key;
   
       if (key) {
-        await s3.deleteObject({ Bucket: bucketName, Key: key }).promise();
+        await s3.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
         console.log(`Deleted invalid image: ${key}`);
       }
     }
