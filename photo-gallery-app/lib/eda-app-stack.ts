@@ -8,6 +8,7 @@ import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 import { Construct } from "constructs";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
@@ -27,7 +28,10 @@ export class EDAAppStack extends cdk.Stack {
   const deadLetterQueue = new sqs.Queue(this, 'ImageDLQ');
   const imageProcessQueue = new sqs.Queue(this, "img-created-queue", {
     receiveMessageWaitTime: cdk.Duration.seconds(10),
-    
+    deadLetterQueue: {
+      maxReceiveCount: 2,
+      queue: deadLetterQueue,
+    },
   });
 
 
@@ -59,6 +63,10 @@ export class EDAAppStack extends cdk.Stack {
       memorySize: 128,
     }
   );
+  
+  logImageFn.addEnvironment("TABLE_NAME", imageTable.tableName);
+  imageTable.grantWriteData(logImageFn);
+  
 
   const addMetadataFn = new lambdanode.NodejsFunction(
     this,
@@ -71,12 +79,18 @@ export class EDAAppStack extends cdk.Stack {
     }
   );
 
+  addMetadataFn.addEnvironment("TABLE_NAME", imageTable.tableName);
+  imageTable.grantWriteData(addMetadataFn);
+
   const updateStatusFn = new lambdanode.NodejsFunction(this, "UpdateStatusFn", {
     runtime: lambda.Runtime.NODEJS_16_X,
     memorySize: 1024,
     timeout: cdk.Duration.seconds(3),
     entry: `${__dirname}/../lambdas/updateStatus.ts`,
   });
+
+  updateStatusFn.addEnvironment("TABLE_NAME", imageTable.tableName);
+  imageTable.grantWriteData(updateStatusFn);
 
   const removeImageFn = new lambdanode.NodejsFunction(
     this,
@@ -89,16 +103,22 @@ export class EDAAppStack extends cdk.Stack {
     }
   );
 
+  removeImageFn.addEnvironment("TABLE_NAME", imageTable.tableName);
+  imageTable.grantWriteData(removeImageFn);
+
   const confirmationMailerFn = new lambdanode.NodejsFunction(
     this,
     "ConfirmationMailerFn",
     {
       runtime: lambda.Runtime.NODEJS_22_X,
-      entry: `${__dirname}/../lambdas/confirmationMailer.ts.ts`,
+      entry: `${__dirname}/../lambdas/confirmationMailer.ts`,
       timeout: cdk.Duration.seconds(15),
       memorySize: 128,
     }
   );
+
+  confirmationMailerFn.addEnvironment("TABLE_NAME", imageTable.tableName);
+  imageTable.grantWriteData(confirmationMailerFn);
 
 
   // S3 --> SQS
@@ -107,30 +127,27 @@ export class EDAAppStack extends cdk.Stack {
     new s3n.SnsDestination(topic)  // Changed
 );
 
-topic.addSubscription(new subscriptions.SqsSubscription(imageQueue, {
+topic.addSubscription(new subs.SqsSubscription(imageProcessQueue, {
   filterPolicy: {
     eventType: sns.SubscriptionFilter.stringFilter({ allowlist: ['ObjectCreated'] })
   }
 }));
 
-topic.addSubscription(new subscriptions.LambdaSubscription(addMetadataFn, {
+topic.addSubscription(new subs.LambdaSubscription(addMetadataFn, {
   filterPolicy: {
     metadata_type: sns.SubscriptionFilter.stringFilter({ allowlist: ['Caption', 'Date', 'Name'] })
   }
 }));
 
-topic.addSubscription(new subscriptions.LambdaSubscription(updateStatusFn, {
+topic.addSubscription(new subs.LambdaSubscription(updateStatusFn, {
   filterPolicy: {
     eventType: sns.SubscriptionFilter.stringFilter({ allowlist: ['ModeratorUpdate'] })
   }
 }));
 
 
-topic.addSubscription(
-  new subs.SqsSubscription(imageProcessQueue)
-);
 
-newImageTopic.addSubscription(new subs.SqsSubscription(mailerQ));
+topic.addSubscription(new subs.SqsSubscription(mailerQ));
 
 
 
