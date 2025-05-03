@@ -104,10 +104,29 @@ export class EDAAppStack extends cdk.Stack {
   // S3 --> SQS
   imagesBucket.addEventNotification(
     s3.EventType.OBJECT_CREATED,
-    new s3n.SnsDestination(newImageTopic)  // Changed
+    new s3n.SnsDestination(topic)  // Changed
 );
 
-newImageTopic.addSubscription(
+topic.addSubscription(new subscriptions.SqsSubscription(imageQueue, {
+  filterPolicy: {
+    eventType: sns.SubscriptionFilter.stringFilter({ allowlist: ['ObjectCreated'] })
+  }
+}));
+
+topic.addSubscription(new subscriptions.LambdaSubscription(addMetadataFn, {
+  filterPolicy: {
+    metadata_type: sns.SubscriptionFilter.stringFilter({ allowlist: ['Caption', 'Date', 'Name'] })
+  }
+}));
+
+topic.addSubscription(new subscriptions.LambdaSubscription(updateStatusFn, {
+  filterPolicy: {
+    eventType: sns.SubscriptionFilter.stringFilter({ allowlist: ['ModeratorUpdate'] })
+  }
+}));
+
+
+topic.addSubscription(
   new subs.SqsSubscription(imageProcessQueue)
 );
 
@@ -121,22 +140,16 @@ newImageTopic.addSubscription(new subs.SqsSubscription(mailerQ));
     maxBatchingWindow: cdk.Duration.seconds(5),
   });
 
-  processImageFn.addEventSource(newImageEventSource);
+  logImageFn.addEventSource(newImageEventSource);
 
-  const newImageMailEventSource = new events.SqsEventSource(mailerQ, {
-    batchSize: 5,
-    maxBatchingWindow: cdk.Duration.seconds(5),
-  }); 
-
-  mailerFn.addEventSource(newImageMailEventSource);
 
 
   // Permissions
 
-  imagesBucket.grantRead(processImageFn);
+  imagesBucket.grantRead(logImageFn);
 
 
-  mailerFn.addToRolePolicy(
+  confirmationMailerFn.addToRolePolicy(
     new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
