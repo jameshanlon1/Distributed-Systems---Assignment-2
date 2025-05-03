@@ -6,7 +6,7 @@ __Demo__: [Add your YouTube demo URL here]
 
 This repository contains the implementation of a skeleton design for an application that manages a photo gallery, illustrated below. The app uses an event-driven architecture and is deployed on the AWS platform using the CDK framework for infrastructure provisioning.
 
-![Architecture Diagram](./images/arch.png)
+![Architecture Diagram](./photo-gallery-app/images/arch.png)
 
 ---
 
