@@ -24,15 +24,15 @@ export class EDAAppStack extends cdk.Stack {
 
 
   // Integration infrastructure
-
+  const deadLetterQueue = new sqs.Queue(this, 'ImageDLQ');
   const imageProcessQueue = new sqs.Queue(this, "img-created-queue", {
     receiveMessageWaitTime: cdk.Duration.seconds(10),
     
   });
 
 
-  const newImageTopic = new sns.Topic(this, "NewImageTopic", {
-    displayName: "New Image topic",
+  const topic = new sns.Topic(this, "ImageTopic", {
+    displayName: "Image topic",
   }); 
 
 
@@ -41,28 +41,64 @@ export class EDAAppStack extends cdk.Stack {
   });
   
 
-
+// DynamoDB Table
+  const imageTable = new dynamodb.Table(this, 'ImageTable', {
+    partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+    removalPolicy: cdk.RemovalPolicy.DESTROY
+  });
 
   // Lambda functions
 
-  const processImageFn = new lambdanode.NodejsFunction(
+  const logImageFn = new lambdanode.NodejsFunction(
     this,
-    "ProcessImageFn",
+    "LogImageFn",
     {
       runtime: lambda.Runtime.NODEJS_22_X,
-      entry: `${__dirname}/../lambdas/processImage.ts`,
+      entry: `${__dirname}/../lambdas/logImage.ts`,
       timeout: cdk.Duration.seconds(15),
       memorySize: 128,
     }
   );
 
+  const addMetadataFn = new lambdanode.NodejsFunction(
+    this,
+    "AddMetadataFn",
+    {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: `${__dirname}/../lambdas/addMetadata.ts`,
+      timeout: cdk.Duration.seconds(15),
+      memorySize: 128,
+    }
+  );
 
-  const mailerFn = new lambdanode.NodejsFunction(this, "mailer-function", {
+  const updateStatusFn = new lambdanode.NodejsFunction(this, "UpdateStatusFn", {
     runtime: lambda.Runtime.NODEJS_16_X,
     memorySize: 1024,
     timeout: cdk.Duration.seconds(3),
-    entry: `${__dirname}/../lambdas/mailer.ts`,
+    entry: `${__dirname}/../lambdas/updateStatus.ts`,
   });
+
+  const removeImageFn = new lambdanode.NodejsFunction(
+    this,
+    "RemoveImageFn",
+    {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: `${__dirname}/../lambdas/removeImage.ts`,
+      timeout: cdk.Duration.seconds(15),
+      memorySize: 128,
+    }
+  );
+
+  const confirmationMailerFn = new lambdanode.NodejsFunction(
+    this,
+    "ConfirmationMailerFn",
+    {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: `${__dirname}/../lambdas/confirmationMailer.ts.ts`,
+      timeout: cdk.Duration.seconds(15),
+      memorySize: 128,
+    }
+  );
 
 
   // S3 --> SQS
